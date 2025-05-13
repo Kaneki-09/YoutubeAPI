@@ -4,9 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/the-new-css-reset/css/reset.min.css">
     <title>Youtube API</title>
     <style>
+        body {
+            margin: 120px;
+        }
+
         #player {
             display: block;
             margin-top: 60px;
@@ -19,15 +22,53 @@
             background-color: #eee;
             padding: 10px;
         }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .video-card {
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #fff;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .video-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-thumb {
+            width: 100%;
+            display: block;
+        }
+
+        .video-title {
+            padding: 10px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #333;
+        }
     </style>
 </head>
 
 <body>
+    <form>
+        <input type="search" id="ytSearch" value="TRiDENT" />
+        <button id="searchBtn">検索</button>
+    </form>
     <!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
     <!-- 1. ここの<div>タグがYoutubeの<iframe>に置き換わる。 -->
     <div id="player"></div>
     <!-- 動画が表示されている<div>の下に追加 -->
     <nav>
+        <div id="searchResultsContainer" class="video-grid"></div>
         <ul>
             <li id="doplay">再生</li>
             <li id="dostop">停止</li>
@@ -63,6 +104,7 @@
             </li>
         </ul>
     </nav>
+
 
     <script>
         // 2. This code loads the IFrame Player API code asynchronously.
@@ -240,8 +282,64 @@
             //数値でないと効かないので、文字列から数値に変換
             playSpeed(parseFloat(speedBtn.speed.value));
         });
-    </script>
 
+        const selectVideo = document.querySelector(".searchlist");
+
+        // 検索する関数の定義
+        function ytSearch(val) {
+            const key = 'AIzaSyBFAbC51TFgmVsgNwrlMmhYeN52IY20kvQ'; //自分のキーに書き換えます。
+            const num = 10;
+            const part = 'snippet';
+            const type = 'video';
+            const query = val;
+            fetch(
+                `https://www.googleapis.com/youtube/v3/search?type=${type}&part=${part}&maxResults=${num}&key=${key}&q=${query}&playsinline=1`
+            )
+                .then((data) => data.json())
+                .then((obj) => {
+                    const resultsContainer = document.getElementById('searchResultsContainer');
+                    resultsContainer.innerHTML = ""; // Clear previous results
+
+                    for (let movie of obj["items"]) {
+                        const ytId = movie["id"]["videoId"];
+                        const ytTitle = movie["snippet"]["title"];
+                        const thumbnail = movie["snippet"]["thumbnails"]["medium"]["url"];
+
+                        const videoCard = document.createElement('div');
+                        videoCard.className = 'video-card';
+                        videoCard.innerHTML = `
+        <img class="video-thumb" src="${thumbnail}" alt="${ytTitle}" />
+        <div class="video-title">${ytTitle}</div>
+    `;
+
+                        videoCard.addEventListener('click', () => {
+                            youtubeId = ytId;
+                            player.destroy();
+                            onYouTubeIframeAPIReady();
+                        });
+
+                        resultsContainer.appendChild(videoCard);
+                    }
+
+                });
+        }
+
+        const ytSearchBtn = document.querySelector('#searchBtn');
+        ytSearchBtn.addEventListener('click', function (e) {
+            const ytSearchVal = document.querySelector('#ytSearch').value;
+            console.log(ytSearchVal); //検索フォームの値を取得
+            ytSearch(ytSearchVal); //関数を定義
+            e.preventDefault(); //検索ボタンの送信をストップしておく。
+        });
+
+        selectVideo.addEventListener('change', function () {
+            const selectedVideoId = this.value;
+            youtubeId = selectedVideoId;
+
+            player.destroy();
+            onYouTubeIframeAPIReady();
+        })
+    </script>
 </body>
 
 </html>
