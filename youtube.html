@@ -68,6 +68,13 @@
     <div id="player"></div>
     <!-- 動画が表示されている<div>の下に追加 -->
     <nav>
+<<<<<<< HEAD
+=======
+        <form>
+            <input type="search" id="ytSearch" value="TRiDENT" />
+            <button id="searchBtn">検索</button>
+        </form>
+>>>>>>> a92065454d39ba84b96730a65abff4caf27053ce
         <div id="searchResultsContainer" class="video-grid"></div>
         <ul>
             <li id="doplay">再生</li>
@@ -283,7 +290,11 @@
             playSpeed(parseFloat(speedBtn.speed.value));
         });
 
+<<<<<<< HEAD
         const selectVideo = document.querySelector(".searchlist");
+=======
+        const selectvideo = document.querySelector(".searchlist");
+>>>>>>> a92065454d39ba84b96730a65abff4caf27053ce
 
         // 検索する関数の定義
         function ytSearch(val) {
@@ -332,7 +343,11 @@
             e.preventDefault(); //検索ボタンの送信をストップしておく。
         });
 
+<<<<<<< HEAD
         selectVideo.addEventListener('change', function () {
+=======
+        selectvideo.addEventListener('change', function () {
+>>>>>>> a92065454d39ba84b96730a65abff4caf27053ce
             const selectedVideoId = this.value;
             youtubeId = selectedVideoId;
 
