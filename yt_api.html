@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Player</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #121212;
+            color: white;
+            margin: 0;
+        }
+
+        header {
+            background-color: #020202;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        h1 a {
+            font-size: 3rem;
+            color: #FA0000;
+            text-decoration: none;
+        }
+
+        #player {
+            display: block;
+            margin: 1rem auto;
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 16 / 9;
+            object-fit: contain;
+        }
+
+        form {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+            gap: 10px;
+        }
+
+        input[type="search"] {
+            padding: 10px;
+            width: 300px;
+            border-radius: 6px;
+            border: none;
+            font-size: 1rem;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #FA0000;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+            padding: 1rem;
+        }
+
+        .video-card {
+            background: #1f1f1f;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .video-card:hover {
+            transform: scale(1.03);
+        }
+
+        .video-thumb {
+            width: 100%;
+            display: block;
+        }
+
+        .video-title {
+            padding: 10px;
+            font-size: 0.95rem;
+            font-weight: bold;
+        }
+
+        .video-channel {
+            padding: 0 10px 10px;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .controls button {
+            margin: 0 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1><a href="yt_api.html">YouTube Player</a></h1>
+        <form id="searchForm">
+            <input type="search" id="ytSearch" placeholder="Search videos..." required />
+            <button id="searchBtn">Search</button>
+        </form>
+    </header>
+
+    <div id="player"></div>
+
+    <div class="controls">
+        <button id="doplay">Play</button>
+        <button id="dopause">Pause</button>
+        <button id="dostop">Stop</button>
+        <button id="mute">Mute</button>
+        <input type="range" id="volume" min="0" max="100" value="50" />
+    </div>
+
+    <div id="searchResultsContainer" class="video-grid"></div>
+    <button id="loadMoreBtn"
+        style="display: none; margin: 20px auto; padding: 10px 20px; font-size: 1rem; display: block;">Load
+        More</button>
+
+    <script>
+        let player;
+        let youtubeId = 'UP1zTP5qcfw';
+        const key = 'AIzaSyBFAbC51TFgmVsgNwrlMmhYeN52IY20kvQ';
+        let nextPageToken = '';
+        let currentQuery = '';
+
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.body.appendChild(tag);
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                videoId: youtubeId,
+                playerVars: { controls: 1 },
+                events: {
+                    onReady: () => player.setVolume(50)
+                }
+            });
+        }
+
+        document.getElementById('doplay').onclick = () => player.playVideo();
+        document.getElementById('dopause').onclick = () => player.pauseVideo();
+        document.getElementById('dostop').onclick = () => player.stopVideo();
+        document.getElementById('mute').onclick = () => player.isMuted() ? player.unMute() : player.mute();
+        document.getElementById('volume').oninput = (e) => player.setVolume(e.target.value);
+
+        document.getElementById('searchForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            currentQuery = document.getElementById('ytSearch').value;
+            nextPageToken = '';
+            ytSearch(currentQuery, true);
+        });
+
+        document.getElementById('loadMoreBtn').addEventListener('click', () => {
+            const query = document.getElementById('ytSearch').value;
+            ytSearch(currentQuery, false);
+        });
+
+        function ytSearch(query, isNewSearch) {
+            fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=24&q=${query}&key=${key}${nextPageToken ? '&pageToken=' + nextPageToken : ''}`)
+                .then(res => res.json())
+                .then(async data => {
+                    nextPageToken = data.nextPageToken || '';
+                    const container = document.getElementById('searchResultsContainer');
+                    if (isNewSearch) container.innerHTML = '';
+                    const videoIds = data.items.map(item => item.id.videoId).join(',');
+
+                    // Fetch durations
+                    const detailsRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${key}`);
+                    const detailsData = await detailsRes.json();
+                    const durations = {};
+                    detailsData.items.forEach(item => {
+                        durations[item.id] = formatDuration(item.contentDetails.duration);
+                    });
+
+
+                    data.items.forEach(item => {
+                        const vid = item.id.videoId;
+                        const title = item.snippet.title;
+                        const thumb = item.snippet.thumbnails.medium.url;
+                        const channel = item.snippet.channelTitle;
+                        const duration = durations[vid] || '';
+
+                        const card = document.createElement('div');
+                        card.className = 'video-card';
+                        card.innerHTML = `
+              <div style="position: relative;">
+            <img class="video-thumb" src="${thumb}" alt="${title}" />
+            <span style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.75); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${duration}</span>
+          </div>
+          <div class="video-title">${title}</div>
+          <div class="video-channel">${channel}</div>
+            `;
+                        card.onclick = () => {
+                            youtubeId = vid;
+                            player.destroy();
+                            onYouTubeIframeAPIReady();
+                        };
+                        container.appendChild(card);
+                    });
+                    document.getElementById('loadMoreBtn').style.display = nextPageToken ? 'block' : 'none';
+                });
+        }
+
+        function formatDuration(iso) {
+            const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+            const h = match[1] ? match[1] : 0;
+            const m = match[2] ? match[2] : 0;
+            const s = match[3] ? match[3] : 0;
+
+            const hStr = h > 0 ? `${h}:` : '';
+            const mStr = h > 0 ? String(m).padStart(2, '0') : `${m}`;
+            const sStr = String(s).padStart(2, '0');
+            return `${h}${m}:${s}`;
+        }
+    </script>
+</body>
+
+</html>
