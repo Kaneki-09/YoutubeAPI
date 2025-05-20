@@ -104,6 +104,24 @@
         .controls button {
             margin: 0 5px;
         }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            padding: 1rem;
+        }
+
+        #player.mini {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px !important;
+            height: 170px !important;
+            z-index: 999;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
     </style>
 </head>
 
@@ -132,6 +150,20 @@
         style="display: none; margin: 20px auto; padding: 10px 20px; font-size: 1rem; display: block;">Load
         More</button>
 
+    <!-- Splash Screen -->
+    <div id="splash"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;background:#111;color:#fff;display:flex;justify-content:center;align-items:center;z-index:9999;font-size:2rem;">
+        🚀 Loading Media Player...
+    </div>
+
+    <!-- Player & Watchlist -->
+    <!-- <div id="player"></div> -->
+    <div id="watchlistPanel"
+        style="display:none;position:fixed;top:0;left:0;height:100%;width:300px;background:#1f1f1f;color:#fff;overflow:auto;z-index:100;padding:1rem;">
+        <h3>📌 Watch Later</h3>
+        <div id="watchlistContent"></div>
+    </div>
+    <button id="toggleWatchlist" style="position:fixed;top:20px;left:20px;z-index:101;">📁 Watchlist</button>
     <script>
         let player;
         let youtubeId = 'UP1zTP5qcfw';
@@ -205,11 +237,13 @@
           </div>
           <div class="video-title">${title}</div>
           <div class="video-channel">${channel}</div>
+          <button onclick="event.stopPropagation(); saveToWatchlist('${vid}', '${title.replace(/'/g, "\'")}', '${thumb}')">💾 Save</button>
             `;
                         card.onclick = () => {
                             youtubeId = vid;
                             player.destroy();
                             onYouTubeIframeAPIReady();
+                            scrollToPlayer();
                         };
                         container.appendChild(card);
                     });
@@ -228,6 +262,67 @@
             const sStr = String(s).padStart(2, '0');
             return `${h}${m}:${s}`;
         }
+
+        // Splash screen fade out
+        window.addEventListener('load', () => {
+            const splash = document.getElementById('splash');
+            setTimeout(() => splash.style.display = 'none', 2000);
+        });
+
+        // Watchlist with remove button
+        function saveToWatchlist(videoId, title, thumb) {
+            const list = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            if (!list.find(v => v.videoId === videoId)) {
+                list.push({ videoId, title, thumb });
+                localStorage.setItem('watchlist', JSON.stringify(list));
+            }
+            renderWatchlist();
+        }
+
+        function removeFromWatchlist(videoId) {
+            let list = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            list = list.filter(v => v.videoId !== videoId);
+            localStorage.setItem('watchlist', JSON.stringify(list));
+            renderWatchlist();
+        }
+
+        function renderWatchlist() {
+            const panel = document.getElementById('watchlistContent');
+            const list = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            panel.innerHTML = '';
+            list.forEach(v => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '10px';
+                div.innerHTML = `
+      <img src="${v.thumb}" style="width:100%;border-radius:4px;cursor:pointer;" onclick="youtubeId='${v.videoId}';player.destroy();onYouTubeIframeAPIReady();scrollToPlayer()">
+      <p style="margin: 5px 0">${v.title}</p>
+      <button onclick="removeFromWatchlist('${v.videoId}')">❌ Remove</button>
+    `;
+                panel.appendChild(div);
+            });
+        }
+
+        document.getElementById('toggleWatchlist').onclick = () => {
+            const panel = document.getElementById('watchlistPanel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+            renderWatchlist();
+        };
+
+        // Auto-scroll to video player
+        function scrollToPlayer() {
+            document.getElementById('player').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Mini-player logic
+        const playerEl = document.getElementById('player');
+        window.addEventListener('scroll', () => {
+            const rect = playerEl.getBoundingClientRect();
+            if (rect.top < -100) {
+                playerEl.classList.add('mini');
+            } else {
+                playerEl.classList.remove('mini');
+            }
+        });
     </script>
 </body>
 
